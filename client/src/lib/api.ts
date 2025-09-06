@@ -43,3 +43,54 @@ export const checkHealth = async () => {
   }
   return response.json();
 };
+
+// Chat session management
+export const createChatSession = async (fileId: string, selectedTables: any[] = []) => {
+  const response = await fetch(`${API_BASE_URL}/api/chat/sessions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fileId, selectedTables }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to create chat session');
+  }
+  
+  return response.json();
+};
+
+// Send chat message
+export const sendChatMessage = async (sessionId: string, message: string, selectedTables: any) => {
+  const response = await fetch(`${API_BASE_URL}/api/chat/sessions/${sessionId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message, selectedTables }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to send message');
+  }
+  
+  return response.json();
+};
+
+// Get insight suggestions
+export const getInsightSuggestions = async (tables: any) => {
+  const response = await fetch(`${API_BASE_URL}/api/insights/suggestions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tables }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to get suggestions');
+  }
+  
+  return response.json();
+};

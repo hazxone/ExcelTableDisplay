@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileUpload } from "@/components/file-upload";
+import { useMutation } from "@tanstack/react-query";
 import { TableSelectionSidebar } from "@/components/table-selection-sidebar";
 import { ChatInterface } from "@/components/chat-interface";
 import { OutputDisplay } from "@/components/output-display";
@@ -9,7 +8,7 @@ import { UploadModal } from "@/components/upload-modal";
 import { ProcessingScreen } from "@/components/processing-screen";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, CheckCircle2, Upload, X } from "lucide-react";
-import { apiRequest, uploadFile } from "@/lib/api";
+import { uploadFile, createChatSession, sendChatMessage, getInsightSuggestions } from "@/lib/api";
 import { type ExcelFile, type ChatSession, type ChatMessage, type TablesData } from "@shared/schema";
 
 interface DashboardState {
@@ -26,7 +25,8 @@ export default function Dashboard() {
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const queryClient = useQueryClient();
+  const [currentAnalysisOutput, setCurrentAnalysisOutput] = useState<any>(null);
+  const [isNewChatLoading, setIsNewChatLoading] = useState(false);
 
   // Initialize dashboard state
   useEffect(() => {
@@ -37,12 +37,7 @@ export default function Dashboard() {
   // Create chat session when file is loaded
   const createSessionMutation = useMutation({
     mutationFn: async (fileId: string) => {
-      const response = await apiRequest('POST', '/api/chat/sessions', {
-        fileId,
-        messages: [],
-        selectedTables: []
-      });
-      return response.json();
+      return await createChatSession(fileId, []);
     },
     onSuccess: (session) => {
       setCurrentSession(session);
@@ -52,23 +47,23 @@ export default function Dashboard() {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({ sessionId, message, selectedTables }: { sessionId: string; message: string; selectedTables: any }) => {
-      const response = await apiRequest('POST', `/api/chat/sessions/${sessionId}/messages`, {
-        message,
-        selectedTables
-      });
-      return response.json();
+      return await sendChatMessage(sessionId, message, selectedTables);
     },
     onSuccess: (data) => {
       if (currentSession) {
+        // Update chat messages (left side)
         const updatedMessages = [
           ...((currentSession.messages as ChatMessage[]) || []),
-          data.userMessage,
-          data.assistantMessage
+          data.chatResponse.userMessage,
+          data.chatResponse.assistantMessage
         ];
         setCurrentSession({
           ...currentSession,
           messages: updatedMessages
         });
+        
+        // Update analysis output (right side)
+        setCurrentAnalysisOutput(data.analysisOutput);
       }
     }
   });
@@ -76,8 +71,8 @@ export default function Dashboard() {
   // Get suggestions mutation
   const getSuggestionsMutation = useMutation({
     mutationFn: async (tables: TablesData) => {
-      const response = await apiRequest('POST', '/api/insights/suggestions', { tables });
-      return response.json();
+      const result = await getInsightSuggestions(tables);
+      return result;
     },
     onSuccess: (data) => {
       setSuggestions(data.suggestions || []);
@@ -153,13 +148,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleFileUploaded = (file: ExcelFile) => {
-    setCurrentFile(file);
-    setSelectedTables([]);
-    setCurrentSession(null);
-    setDashboardState({ status: 'ready' });
-  };
-
+  
   const handleCancelUpload = () => {
     // If we came from the upload modal, return to ready state
     if (currentFile) {
@@ -219,10 +208,24 @@ export default function Dashboard() {
     });
   };
 
+  const handleNewChat = async () => {
+    if (!currentFile || isNewChatLoading) return;
+
+    setIsNewChatLoading(true);
+    try {
+      // Create a new chat session
+      const newSession = await createChatSession(currentFile.id, []);
+      setCurrentSession(newSession);
+      setCurrentAnalysisOutput(null);
+      setSuggestions([]);
+    } catch (error) {
+      console.error('Failed to create new chat session:', error);
+    } finally {
+      setIsNewChatLoading(false);
+    }
+  };
+
   const currentMessages = (currentSession?.messages as ChatMessage[]) || [];
-  const currentOutput = currentMessages.length > 0 
-    ? currentMessages[currentMessages.length - 1] 
-    : null;
 
   const isTyping = sendMessageMutation.isPending;
 
@@ -338,21 +341,23 @@ export default function Dashboard() {
 
             {/* Ready State - Full Dashboard */}
             {dashboardState.status === 'ready' && currentFile && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full overflow-hidden">
                 {/* Left Column - Chat */}
-                <div className="flex flex-col">
+                <div className="flex flex-col h-full overflow-hidden">
                   <ChatInterface
                     messages={currentMessages}
                     onSendMessage={handleSendMessage}
+                    onNewChat={handleNewChat}
+                    isNewChatLoading={isNewChatLoading}
                     isTyping={isTyping}
                     suggestions={suggestions}
                   />
                 </div>
 
                 {/* Right Column - Output Display */}
-                <div className="flex flex-col">
+                <div className="flex flex-col h-full overflow-hidden">
                   <OutputDisplay
-                    currentOutput={currentOutput?.sender === 'assistant' ? currentOutput : null}
+                    currentOutput={currentAnalysisOutput}
                     analysisHistory={currentMessages}
                   />
                 </div>

@@ -12,12 +12,15 @@ This is a web application that allows users to upload Excel files and analyze th
 - **UI Library**: Custom components with Tailwind CSS
 - **State Management**: React hooks + TanStack Query
 - **Routing**: Wouter (minimal router)
+- **API Client**: Custom utilities for FastAPI communication
 
 ### Backend (FastAPI - Python)
 - **Framework**: FastAPI with Python
 - **Server**: Uvicorn
 - **Data Format**: JSON responses with mock Excel data
 - **CORS**: Enabled for frontend communication
+- **Documentation**: Auto-generated at `/docs` and `/redoc`
+- **Architecture**: Modular structure with separation of concerns
 
 ## Project Structure
 
@@ -29,7 +32,6 @@ ExcelTableDisplay/
 │   │   │   ├── ui/                   # Base UI components
 │   │   │   ├── chat-interface.tsx   # AI chat interface
 │   │   │   ├── empty-state.tsx      # Upload prompt screen
-│   │   │   ├── file-upload.tsx      # File upload component
 │   │   │   ├── output-display.tsx   # Analysis results display
 │   │   │   ├── processing-screen.tsx # Upload progress screen
 │   │   │   ├── table-selection-sidebar.tsx # Table selector
@@ -44,15 +46,23 @@ ExcelTableDisplay/
 │   ├── package.json
 │   └── ...
 ├── backend/                         # FastAPI backend
-│   ├── main.py                      # FastAPI application
+│   ├── app/                         # Modular application structure
+│   │   ├── main.py                 # FastAPI app with middleware & routers
+│   │   ├── core/                   # Core configuration and services
+│   │   │   ├── config.py           # Environment variables & settings
+│   │   │   └── agent.py            # Agno AI agent configuration
+│   │   ├── routers/                # API endpoints
+│   │   │   ├── chat.py             # Chat session endpoints
+│   │   │   └── files.py            # File upload endpoints
+│   │   ├── services/               # Business logic layer
+│   │   │   └── chat_service.py     # Chat processing logic
+│   │   ├── schemas/                # Data models
+│   │   │   └── chat.py             # Pydantic models for API responses
+│   │   └── utils/                  # Utility functions
+│   │       └── prompt_builder.py  # Enhanced prompt creation
+│   ├── main.py                      # Entry point (imports from app/)
 │   ├── requirements.txt             # Python dependencies
 │   └── README.md                    # Backend setup instructions
-├── server/                          # Original Node.js server (deprecated)
-│   ├── index.ts                     # Express server
-│   ├── storage.ts                   # Mock data storage
-│   ├── routes.ts                    # API routes
-│   └── services/
-│       └── openai.ts                # OpenAI integration
 ├── shared/                          # Shared TypeScript definitions
 │   └── schema.ts                    # Database schemas and types
 ├── start.sh                         # Unix/Mac startup script
@@ -115,20 +125,23 @@ interface DashboardState {
 **Features**:
 - Real-time chat with AI assistant
 - Message history with markdown rendering
-- Suggested questions functionality
+- Suggested questions functionality (always visible, even after messages)
 - Keyboard shortcuts (Enter to send)
 - Typing indicators
+- Independent scrolling from analysis panel
 
 ### 6. OutputDisplay (`client/src/components/output-display.tsx`)
 **Purpose**: Displays AI analysis results
 
 **Features**:
 - Tabbed interface (Current Analysis vs History)
-- Chart rendering (bar, line, pie) using Recharts
+- Chart rendering (bar, line, pie) using Recharts with multiple dataset support
 - Table display with sorting
 - Export functionality (JSON download)
 - Share functionality
 - Analysis history
+- Independent scrolling from chat panel
+- Enhanced chart visualization with legends and multiple data series
 
 ### 7. TableSelectionSidebar (`client/src/components/table-selection-sidebar.tsx`)
 **Purpose**: Sidebar for selecting Excel tables for analysis
@@ -171,6 +184,27 @@ GET /api/files
 4. **AI Analysis** → Backend processes and returns analysis
 5. **Display Results** → Shows charts, tables, or text responses
 
+### 4. API Endpoints
+**Chat and Analysis**:
+```typescript
+// Create chat session
+POST /api/chat/sessions
+→ Returns session ID with empty message history
+
+// Send chat message  
+POST /api/chat/sessions/{session_id}/messages
+→ Returns structured response with chatResponse and analysisOutput
+
+// Get insight suggestions
+POST /api/insights/suggestions  
+→ Returns suggested questions based on selected tables
+```
+
+**Response Structure**:
+The backend now returns separated responses:
+- `chatResponse`: Contains conversation messages for AI Assistant panel
+- `analysisOutput`: Contains analysis results for Output Display panel
+
 ## Current Data Setup
 
 ### Mock Data (Hardcoded)
@@ -209,6 +243,7 @@ All table data is currently mocked in the FastAPI backend:
 - **Uvicorn** - ASGI server
 - **Python 3.8+** - Runtime
 - **CORS Middleware** - Cross-origin requests
+- **UUID** - Unique identifier generation
 
 ## Development Setup
 
@@ -256,7 +291,7 @@ npm run dev
 - Data validation and error handling
 
 ### Phase 2: Database Integration
-- Replace mock storage with PostgreSQL
+- Add PostgreSQL for data persistence
 - User authentication and sessions
 - File upload persistence
 - Analysis history storage
@@ -276,6 +311,9 @@ npm run dev
 4. **API Integration**: Frontend uses custom API utilities in `client/src/lib/api.ts`
 5. **Build Process**: Use `npm run build` for production builds
 6. **TypeScript**: Strict TypeScript configuration for type safety
+7. **Chart Library**: Uses Recharts for data visualization with multi-dataset support
+8. **Separated UI Panels**: Chat and Analysis panels have independent scrolling and state management
+9. **Suggestions Visibility**: "Try asking" suggestions are always visible in the chat interface
 
 ## File Upload Implementation Details
 
@@ -294,5 +332,114 @@ npm run dev
 - **Progress animations** - Provides user feedback during "processing"
 - **Mock backend** - Allows frontend development without real Excel processing
 - **State preservation** - Current work is not lost when exploring upload options
+- **Separated UI Architecture** - Chat and Analysis panels are independent with their own state
+- **Structured API Responses** - Backend returns separated chat and analysis data for better UI organization
+
+## Recent Improvements (Latest Updates)
+
+### 1. Enhanced Chart Visualization
+- **Multi-dataset support**: Charts now display multiple data series side by side
+- **Enhanced legends**: Clear identification of different data series
+- **Improved data structure**: Backend provides multiple datasets for comprehensive analysis
+- **Example**: Revenue, Units Sold, and Profit displayed in the same chart for comparison
+
+### 2. Independent Panel Scrolling
+- **Separated scroll contexts**: Chat and Analysis panels no longer affect each other's scrolling
+- **Better UX**: Users can review long chat histories while keeping analysis results visible
+- **Proper height constraints**: Each panel maintains its own scroll boundaries
+
+### 3. Always-Visible Suggestions
+- **Persistent "Try asking" section**: Suggestions remain visible even after multiple messages
+- **Better discoverability**: Users can always see suggested questions for their data
+- **Improved engagement**: Encourages continued interaction with the AI assistant
+
+### 4. Structured API Architecture
+- **Separated response format**: `chatResponse` for conversation, `analysisOutput` for results
+- **Better state management**: Frontend can handle chat and analysis independently
+- **Enhanced type safety**: Proper TypeScript interfaces for different data types
+
+### 5. Complete Table Data Support
+- **Structured table data**: Backend now provides proper table data with headers and rows
+- **Dedicated table rendering**: Tables use separate `tableData` field instead of reusing chart data
+- **Enhanced data models**: Added `TableData` Pydantic model and updated frontend interfaces
+- **Improved AI instructions**: AI agent now generates structured table data when requested
+
+### 6. Full Table Context Processing
+- **Complete data access**: Removed row truncation - AI now receives complete table data
+- **Enhanced analysis**: AI can analyze all months/rows including March data
+- **Dynamic chart types**: Chart type is now determined by AI response, not hardcoded
+- **Better data context**: AI receives full table structure for more accurate analysis
+
+### 7. Redundant Text Cleanup
+- **Streamlined display**: Eliminated duplicate text in analysis output
+- **Conditional rendering**: Content displays appropriately based on output type
+- **Improved user experience**: Cleaner, more focused analysis presentation
 
 This architecture provides a solid foundation for real Excel processing while maintaining excellent user experience and developer productivity.
+
+## Backend Architecture Guide
+
+### File Organization and Purpose
+
+#### **Entry Point**
+- **`backend/main.py`** - Simple entry point that imports and runs the FastAPI app from `app/main.py`
+
+#### **Core Application (`app/`)**
+- **`app/main.py`** - FastAPI app setup, middleware configuration, and router registration
+- **`app/core/config.py`** - All configuration settings (CORS, database, API keys, etc.)
+- **`app/core/agent.py`** - Agno AI agent configuration and initialization
+
+#### **API Endpoints (`app/routers/`)**
+- **`app/routers/chat.py`** - All chat-related endpoints (`/api/chat/sessions`, `/api/chat/sessions/{id}/messages`, etc.)
+- **`app/routers/files.py`** - File upload and management endpoints (`/api/upload/excel`, `/api/files`)
+
+#### **Business Logic (`app/services/`)**
+- **`app/services/chat_service.py`** - Core chat processing logic, AI response handling, and business rules
+
+#### **Data Models (`app/schemas/`)**
+- **`app/schemas/chat.py`** - All Pydantic models for API requests/responses
+
+#### **Utilities (`app/utils/`)**
+- **`app/utils/prompt_builder.py`** - Helper functions for creating enhanced AI prompts
+
+### When to Edit Which Files
+
+#### **Adding New API Endpoints**
+1. **Create new router** in `app/routers/` (e.g., `users.py`)
+2. **Add router** to `app/main.py` using `app.include_router()`
+3. **Add business logic** in `app/services/` if needed
+4. **Add models** in `app/schemas/` if needed
+
+#### **Modifying Chat/AI Functionality**
+- **Business logic changes**: `app/services/chat_service.py`
+- **AI agent configuration**: `app/core/agent.py`
+- **Prompt engineering**: `app/utils/prompt_builder.py`
+- **Response models**: `app/schemas/chat.py`
+
+#### **Adding Configuration Options**
+- **New settings**: `app/core/config.py`
+- **Environment variables**: Update `Settings` class in config
+
+#### **Adding New Features**
+1. **Add models** in `app/schemas/`
+2. **Add business logic** in `app/services/`
+3. **Add endpoints** in `app/routers/`
+4. **Register routers** in `app/main.py`
+
+### Key Benefits of This Structure
+
+1. **Separation of Concerns** - Each file has a clear, single responsibility
+2. **Testability** - Business logic is isolated from HTTP handling
+3. **Maintainability** - Easy to find and modify specific functionality
+4. **Scalability** - Simple to add new features without bloating existing files
+5. **Reusability** - Services can be called from multiple endpoints
+
+### Development Workflow
+
+1. **Start new feature** → Add models in `schemas/`
+2. **Implement logic** → Add service functions in `services/`
+3. **Expose via API** → Add endpoints in `routers/`
+4. **Configure** → Update settings in `core/config.py` if needed
+5. **Test** → Run `python3 main.py` to test locally
+
+This modular structure makes it easy to maintain and extend the backend while keeping code organized and testable.

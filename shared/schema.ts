@@ -53,7 +53,7 @@ export const chatMessageSchema = z.object({
   content: z.string(),
   sender: z.enum(['user', 'assistant']),
   timestamp: z.string(),
-  outputType: z.enum(['text', 'chart', 'table']).optional(),
+  outputType: z.enum(['text', 'chart', 'table', 'insight']).optional(),
   chartData: z.any().optional(),
 });
 

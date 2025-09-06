@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Plus, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,13 @@ import ReactMarkdown from "react-markdown";
 interface ChatInterfaceProps {
   messages: ChatMessage[];
   onSendMessage: (message: string) => void;
+  onNewChat?: () => void;
+  isNewChatLoading?: boolean;
   isTyping: boolean;
   suggestions: string[];
 }
 
-export function ChatInterface({ messages, onSendMessage, isTyping, suggestions }: ChatInterfaceProps) {
+export function ChatInterface({ messages, onSendMessage, onNewChat, isNewChatLoading, isTyping, suggestions }: ChatInterfaceProps) {
   const [inputMessage, setInputMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,11 +47,43 @@ export function ChatInterface({ messages, onSendMessage, isTyping, suggestions }
     onSendMessage(suggestion);
   };
 
+  const handleNewChat = () => {
+    if (onNewChat) {
+      onNewChat();
+    }
+  };
+
   return (
     <Card className="flex flex-col flex-1 min-h-0">
       <CardHeader className="p-4 border-b border-border">
-        <h3 className="text-lg font-medium text-foreground">AI Assistant</h3>
-        <p className="text-sm text-muted-foreground">Ask questions about your data</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium text-foreground">AI Assistant</h3>
+            <p className="text-sm text-muted-foreground">Ask questions about your data</p>
+          </div>
+          {messages.length > 0 && onNewChat && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNewChat}
+              disabled={isNewChatLoading}
+              className="flex items-center space-x-1"
+              data-testid="new-chat-button"
+            >
+              {isNewChatLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  <span>New Chat</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col p-0 min-h-0">
@@ -85,41 +119,78 @@ export function ChatInterface({ messages, onSendMessage, isTyping, suggestions }
               )}
             </div>
           ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start space-x-3 fade-in ${
-                  message.sender === 'user' ? 'justify-end' : ''
-                }`}
-                data-testid={`message-${message.sender}`}
-              >
-                {message.sender === 'assistant' && (
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                    <Bot className="text-primary-foreground text-sm" />
+            <>
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex items-start space-x-3 fade-in ${
+                    message.sender === 'user' ? 'justify-end' : ''
+                  }`}
+                  data-testid={`message-${message.sender}`}
+                >
+                  {message.sender === 'assistant' && (
+                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                      <Bot className="text-primary-foreground text-sm" />
+                    </div>
+                  )}
+                  
+                  <div className={`message-bubble rounded-lg p-3 ${
+                    message.sender === 'user' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-secondary text-secondary-foreground'
+                  }`}>
+                    {message.sender === 'assistant' ? (
+                      <div className="text-sm prose prose-sm max-w-none">
+                        <ReactMarkdown>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm">{message.content}</p>
+                    )}
                   </div>
-                )}
-                
-                <div className={`message-bubble rounded-lg p-3 ${
-                  message.sender === 'user' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground'
-                }`}>
-                  {message.sender === 'assistant' ? (
-                    <ReactMarkdown className="text-sm prose prose-sm max-w-none">
-                      {message.content}
-                    </ReactMarkdown>
-                  ) : (
-                    <p className="text-sm">{message.content}</p>
+
+                  {message.sender === 'user' && (
+                    <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="text-muted-foreground text-sm" />
+                    </div>
                   )}
                 </div>
-
-                {message.sender === 'user' && (
-                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
-                    <User className="text-muted-foreground text-sm" />
+              ))}
+              
+              {/* Suggestions section - always visible after messages */}
+              {suggestions.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-border">
+                  <p className="text-sm font-medium mb-3 text-muted-foreground">Try asking:</p>
+                  <div className="space-y-2">
+                    {suggestions.slice(0, 3).map((suggestion, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="text-xs"
+                        data-testid={`suggestion-${index}`}
+                      >
+                        {suggestion}
+                      </Button>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* New Chat Loading Indicator */}
+          {isNewChatLoading && (
+            <div className="flex items-start space-x-3 fade-in" data-testid="new-chat-loading">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                <Loader2 className="text-primary-foreground text-sm animate-spin" />
               </div>
-            ))
+              <div className="bg-secondary rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">Creating new chat session...</p>
+              </div>
+            </div>
           )}
 
           {/* Typing Indicator */}

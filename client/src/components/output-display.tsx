@@ -7,8 +7,18 @@ import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, C
 import { type ChatMessage } from "@shared/schema";
 import ReactMarkdown from "react-markdown";
 
+interface AnalysisOutput {
+  id: string;
+  type: 'text' | 'chart' | 'table' | 'insight';
+  title: string;
+  content: string;
+  chartData?: any;
+  tableData?: any;
+  timestamp: string;
+}
+
 interface OutputDisplayProps {
-  currentOutput: ChatMessage | null;
+  currentOutput: AnalysisOutput | null;
   analysisHistory: ChatMessage[];
 }
 
@@ -23,34 +33,61 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
 
     switch (type) {
       case 'bar':
-        return (
-          <ResponsiveContainer width="100%" height={300}>
-            <RechartsBarChart data={data.datasets?.[0]?.data?.map((value: any, index: number) => ({
-              name: data.labels?.[index] || `Item ${index + 1}`,
-              value: value
-            })) || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill={colors[0]} />
-            </RechartsBarChart>
-          </ResponsiveContainer>
-        );
+        // Transform data for multiple datasets
+        const chartDataArray = data.labels?.map((label: string, index: number) => {
+          const item: any = { name: label };
+          data.datasets?.forEach((dataset: any, datasetIndex: number) => {
+            item[dataset.label] = dataset.data[index];
+          });
+          return item;
+        }) || [];
 
-      case 'line':
         return (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data.datasets?.[0]?.data?.map((value: any, index: number) => ({
-              name: data.labels?.[index] || `Item ${index + 1}`,
-              value: value
-            })) || []}>
+            <RechartsBarChart data={chartDataArray}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="value" stroke={colors[0]} strokeWidth={2} />
+              {data.datasets?.map((dataset: any, index: number) => (
+                <Bar 
+                  key={dataset.label}
+                  dataKey={dataset.label}
+                  fill={dataset.backgroundColor || colors[index % colors.length]}
+                />
+              ))}
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'line':
+        // Transform data for multiple datasets (same structure as bar chart)
+        const lineChartDataArray = data.labels?.map((label: string, index: number) => {
+          const item: any = { name: label };
+          data.datasets?.forEach((dataset: any, datasetIndex: number) => {
+            item[dataset.label] = dataset.data[index];
+          });
+          return item;
+        }) || [];
+
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={lineChartDataArray}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {data.datasets?.map((dataset: any, index: number) => (
+                <Line 
+                  key={dataset.label}
+                  type="monotone"
+                  dataKey={dataset.label}
+                  stroke={dataset.backgroundColor || colors[index % colors.length]}
+                  strokeWidth={2}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         );
@@ -123,8 +160,9 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
     const exportData = {
       timestamp: currentOutput.timestamp,
       content: currentOutput.content,
-      outputType: currentOutput.outputType,
-      chartData: currentOutput.chartData
+      type: currentOutput.type,
+      chartData: currentOutput.chartData,
+      title: currentOutput.title
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -144,7 +182,7 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Excel Data Analysis',
+          title: currentOutput.title,
           text: currentOutput.content,
           url: window.location.href
         });
@@ -217,13 +255,14 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
               <div className="space-y-6">
                 {/* Output Type Badge */}
                 <div className="flex items-center space-x-2">
-                  {currentOutput.outputType === 'chart' && <BarChart className="w-4 h-4" />}
-                  {currentOutput.outputType === 'table' && <TrendingUp className="w-4 h-4" />}
-                  {currentOutput.outputType === 'text' && <Brain className="w-4 h-4" />}
+                  {currentOutput.type === 'chart' && <BarChart className="w-4 h-4" />}
+                  {currentOutput.type === 'table' && <TrendingUp className="w-4 h-4" />}
+                  {currentOutput.type === 'text' && <Brain className="w-4 h-4" />}
                   <Badge variant="outline">
-                    {currentOutput.outputType === 'chart' && 'Data Visualization'}
-                    {currentOutput.outputType === 'table' && 'Data Table'}
-                    {currentOutput.outputType === 'text' && 'AI Analysis'}
+                    {currentOutput.type === 'chart' && 'Data Visualization'}
+                    {currentOutput.type === 'table' && 'Data Table'}
+                    {currentOutput.type === 'text' && 'AI Analysis'}
+                    {currentOutput.type === 'insight' && 'Insight'}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {new Date(currentOutput.timestamp).toLocaleTimeString()}
@@ -231,24 +270,23 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
                 </div>
 
                 {/* Chart Display */}
-                {currentOutput.outputType === 'chart' && currentOutput.chartData && (
+                {currentOutput.type === 'chart' && currentOutput.chartData && (
                   <div className="bg-background border border-border rounded-lg p-4">
                     {renderChart(currentOutput.chartData)}
                   </div>
                 )}
 
                 {/* Table Display */}
-                {currentOutput.outputType === 'table' && currentOutput.chartData && (
-                  renderTable(currentOutput.chartData)
+                {currentOutput.type === 'table' && currentOutput.tableData && (
+                  renderTable(currentOutput.tableData)
                 )}
 
                 {/* Text Analysis */}
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{currentOutput.content}</ReactMarkdown>
-                </div>
-
-                {/* AI Analysis Footer */}
-                {currentOutput.outputType !== 'text' && (
+                {currentOutput.type === 'text' || currentOutput.type === 'insight' ? (
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown>{currentOutput.content}</ReactMarkdown>
+                  </div>
+                ) : (
                   <div className="p-4 bg-secondary/30 rounded-lg border border-border">
                     <h5 className="text-sm font-medium text-foreground mb-2 flex items-center">
                       <Brain className="w-4 h-4 mr-2 text-primary" />
@@ -297,6 +335,7 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
                         {message.outputType === 'chart' && 'Chart'}
                         {message.outputType === 'table' && 'Table'}
                         {message.outputType === 'text' && 'Analysis'}
+                        {message.outputType === 'insight' && 'Insight'}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         {new Date(message.timestamp).toLocaleString()}
