@@ -1,10 +1,10 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel
 
 class ChartDataset(BaseModel):
     label: str
     data: List[Any]
-    backgroundColor: str
+    backgroundColor: Union[str, List[str]]  # Support both single string (for bar/line) and list of strings (for pie)
 
 class ChartData(BaseModel):
     type: Optional[str] = None  # "bar", "line", "pie"

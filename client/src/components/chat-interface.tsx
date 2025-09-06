@@ -137,10 +137,10 @@ export function ChatInterface({ messages, onSendMessage, onNewChat, isNewChatLoa
                   <div className={`message-bubble rounded-lg p-3 ${
                     message.sender === 'user' 
                       ? 'bg-primary text-primary-foreground' 
-                      : 'bg-secondary text-secondary-foreground'
+                      : 'bg-muted text-foreground'
                   }`}>
                     {message.sender === 'assistant' ? (
-                      <div className="text-sm prose prose-sm max-w-none">
+                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown>
                           {message.content}
                         </ReactMarkdown>
@@ -187,8 +187,8 @@ export function ChatInterface({ messages, onSendMessage, onNewChat, isNewChatLoa
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                 <Loader2 className="text-primary-foreground text-sm animate-spin" />
               </div>
-              <div className="bg-secondary rounded-lg p-3">
-                <p className="text-sm text-muted-foreground">Creating new chat session...</p>
+              <div className="bg-muted rounded-lg p-3">
+                <p className="text-sm text-foreground">Creating new chat session...</p>
               </div>
             </div>
           )}
@@ -199,11 +199,11 @@ export function ChatInterface({ messages, onSendMessage, onNewChat, isNewChatLoa
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                 <Bot className="text-primary-foreground text-sm" />
               </div>
-              <div className="bg-secondary rounded-lg p-3">
+              <div className="bg-muted rounded-lg p-3">
                 <div className="typing-dots flex space-x-1">
-                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-typing"></span>
-                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-typing" style={{ animationDelay: '0.16s' }}></span>
-                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-typing" style={{ animationDelay: '0.32s' }}></span>
+                  <span className="w-2 h-2 bg-foreground rounded-full animate-typing"></span>
+                  <span className="w-2 h-2 bg-foreground rounded-full animate-typing" style={{ animationDelay: '0.16s' }}></span>
+                  <span className="w-2 h-2 bg-foreground rounded-full animate-typing" style={{ animationDelay: '0.32s' }}></span>
                 </div>
               </div>
             </div>

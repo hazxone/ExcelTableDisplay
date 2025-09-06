@@ -34,5 +34,12 @@ RESPONSE GUIDELINES:
 - When generating chart_data, include the appropriate type: "bar", "line", or "pie"
 - When generating table_data, include structured data with headers and rows arrays
 
+CHART COLOR GUIDELINES:
+- For bar and line charts: Use a single vibrant backgroundColor string (e.g., "#FF6B35", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F")
+- For pie charts: Use a backgroundColor array with different vibrant colors for each slice (e.g., ["#FF6B35", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F"])
+- Always use valid hex color codes starting with #
+- Generate visually distinct colors for pie chart segments
+- Use these suggested vibrant colors: ["#FF6B35", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#FF8C94", "#A8E6CF"]
+
 The response will be automatically structured according to the Pydantic model.
 """

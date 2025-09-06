@@ -115,11 +115,31 @@ def process_chat_message(session_id: str, message: str, selected_tables: Dict[st
                 "options": {}
             }
             for dataset in analysis_response.chart_data.datasets:
-                chart_data_dict["data"]["datasets"].append({
+                dataset_dict = {
                     "label": dataset.label,
                     "data": dataset.data,
-                    "backgroundColor": dataset.backgroundColor
-                })
+                }
+                
+                # Handle backgroundColor based on chart type
+                if isinstance(dataset.backgroundColor, list):
+                    # For pie charts, backgroundColor is a list of colors
+                    dataset_dict["backgroundColor"] = dataset.backgroundColor
+                else:
+                    # For bar/line charts, backgroundColor is a single string
+                    dataset_dict["backgroundColor"] = dataset.backgroundColor
+                
+                # Special handling for pie charts to ensure colors are provided
+                if chart_data_dict["type"] == "pie":
+                    if isinstance(dataset_dict["backgroundColor"], str):
+                        # Convert single color to list for pie chart
+                        default_colors = ["#FF6B35", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#FF8C94", "#A8E6CF"]
+                        dataset_dict["backgroundColor"] = default_colors[:len(dataset.data)]
+                    elif not dataset_dict["backgroundColor"] or len(dataset_dict["backgroundColor"]) != len(dataset.data):
+                        # Ensure we have enough colors for all pie slices
+                        default_colors = ["#FF6B35", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#FF8C94", "#A8E6CF"]
+                        dataset_dict["backgroundColor"] = default_colors[:len(dataset.data)]
+                
+                chart_data_dict["data"]["datasets"].append(dataset_dict)
             print("Chart data converted:", chart_data_dict)
         
         # Convert table data to dict if present

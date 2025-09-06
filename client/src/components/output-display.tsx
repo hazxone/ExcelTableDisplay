@@ -93,6 +93,9 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
         );
 
       case 'pie':
+        // Get the backgroundColor array from the dataset or use default colors
+        const pieColors = data.datasets?.[0]?.backgroundColor || colors;
+        
         return (
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -106,11 +109,14 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
                 labelLine={false}
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 outerRadius={80}
-                fill="#8884d8"
+                fill="#8884d8"  // This fallback color will be overridden by Cell components
                 dataKey="value"
               >
                 {data.datasets?.[0]?.data?.map((_: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={Array.isArray(pieColors) ? pieColors[index % pieColors.length] : pieColors} 
+                  />
                 ))}
               </Pie>
               <Tooltip />
@@ -272,6 +278,11 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
                 {/* Chart Display */}
                 {currentOutput.type === 'chart' && currentOutput.chartData && (
                   <div className="bg-background border border-border rounded-lg p-4">
+                    {currentOutput.title && (
+                      <h4 className="text-lg font-semibold text-foreground mb-4 text-center">
+                        {currentOutput.title}
+                      </h4>
+                    )}
                     {renderChart(currentOutput.chartData)}
                   </div>
                 )}
@@ -283,16 +294,16 @@ export function OutputDisplay({ currentOutput, analysisHistory }: OutputDisplayP
 
                 {/* Text Analysis */}
                 {currentOutput.type === 'text' || currentOutput.type === 'insight' ? (
-                  <div className="prose prose-sm max-w-none">
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
                     <ReactMarkdown>{currentOutput.content}</ReactMarkdown>
                   </div>
                 ) : (
-                  <div className="p-4 bg-secondary/30 rounded-lg border border-border">
+                  <div className="p-4 bg-muted rounded-lg border border-border">
                     <h5 className="text-sm font-medium text-foreground mb-2 flex items-center">
                       <Brain className="w-4 h-4 mr-2 text-primary" />
                       AI Analysis
                     </h5>
-                    <div className="text-sm text-foreground">
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown>{currentOutput.content}</ReactMarkdown>
                     </div>
                   </div>
